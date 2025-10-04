@@ -19,3 +19,9 @@ export interface Sensor {
 	sensor_name: string;
 	sensor_type: SensorType;
 }
+
+export interface Pipeline {
+	id: string;
+	state: string;
+	start_time: Date;
+}
