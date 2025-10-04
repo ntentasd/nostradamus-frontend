@@ -3,7 +3,6 @@
 	import { fade } from 'svelte/transition';
 	import type { SensorData, Field } from '$lib/types';
 	import { Card, CardContent } from '$lib/components/ui/card';
-	import { Separator } from '$lib/components/ui/separator';
 	import { goto } from '$app/navigation';
 	import { Button, type ButtonProps } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
