@@ -7,6 +7,7 @@
 		<a href="/" class="text-xl font-semibold text-gray-900">Nostradamus</a>
 		<div class="flex space-x-6">
 			<a href="/" class="text-gray-700 hover:text-gray-900">Latest</a>
+			<a href="/pipelines" class="text-gray-700 hover:text-gray-900">Pipelines</a>
 			<a href="/healthz" class="text-gray-700 hover:text-gray-900">Health</a>
 			<a href="/login" class="text-gray-700 hover:text-gray-900">Login</a>
 		</div>
