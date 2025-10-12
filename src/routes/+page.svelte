@@ -18,14 +18,6 @@
 	let newFieldName = $state('');
 	let validationError = $state<string | null>(null);
 
-	function generateUUID(): string {
-		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-			const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 0xf) >> 0;
-			const v = c === 'x' ? r : (r & 0x3) | 0x8;
-			return v.toString(16);
-		});
-	}
-
 	function openModal(_event?: MouseEvent) {
 		newFieldName = '';
 		validationError = null;
@@ -36,17 +28,59 @@
 		showModal = false;
 	}
 
-	function addField() {
+	async function addField() {
 		if (!newFieldName.trim()) {
 			validationError = 'Field name cannot be empty.';
 			return;
 		}
-		const newField: Field = {
-			field_id: generateUUID(),
-			field_name: newFieldName.trim()
-		};
-		fields = [...fields, newField];
-		showModal = false;
+
+		const sanitizedFieldName = newFieldName
+			.trim()
+			.toLowerCase()
+			.replace(/\s+/g, '_')
+			.replace(/[^a-z0-9_-]/g, '');
+
+		const user_id = '550e8400-e29b-41d4-a716-446655440000';
+		validationError = null;
+
+		try {
+			const res = await fetch('http://localhost:8080/fields', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id,
+					field_name: sanitizedFieldName
+				})
+			});
+
+			const raw = await res.json().catch(() => ({}));
+
+			// Non-200 response → show error in modal
+			if (!res.ok) {
+				validationError = raw?.error ? raw.error : `Request failed with status ${res.status}`;
+				return;
+			}
+
+			const data = raw?.data;
+			if (!data || !data.field_id || !data.field_name) {
+				validationError = 'Invalid response from server.';
+				return;
+			}
+
+			const newField: Field = {
+				field_id: data.field_id,
+				field_name: data.field_name
+			};
+
+			fields = [...fields, newField];
+			showModal = false;
+			newFieldName = '';
+			validationError = null;
+		} catch (err) {
+			validationError = (err as Error).message;
+		}
 	}
 
 	onMount(async () => {
