@@ -22,6 +22,5 @@ export interface Sensor {
 
 export interface Pipeline {
 	id: string;
-	state: string;
-	start_time: Date;
+	name: string;
 }

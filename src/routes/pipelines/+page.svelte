@@ -4,17 +4,14 @@
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-
-	type Pipeline = {
-		id: string;
-		state: string;
-		started_at?: string;
-	};
+	import { RefreshCw } from 'lucide-svelte';
+	import type { Pipeline } from '$lib/types';
 
 	const pipelines = writable<Map<string, Pipeline>>(new Map());
 	const orderIds = writable<string[]>([]);
 	const isInitializing = writable(true);
 	const errorMsg = writable<string | null>(null);
+	const jobStatuses = writable<Map<string, string>>(new Map());
 
 	const sortedPipelines = derived(
 		[pipelines, orderIds],
@@ -31,15 +28,14 @@
 
 	async function fetchPipelines() {
 		try {
-			const res = await fetch('http://localhost:8080/jobs');
+			const res = await fetch('http://localhost:8080/pipelines');
 			if (!res.ok) throw new Error(`Failed to fetch pipelines: ${res.status}`);
 
 			const json = await res.json();
 
 			const newData: Pipeline[] = (json.data ?? []).map((p: Pipeline) => ({
 				id: p.id,
-				state: p.state,
-				started_at: p.started_at ? new Date(Number(p.started_at) / 1000) : new Date(0)
+				name: p.name
 			}));
 
 			const newIds = newData.map((p) => p.id);
@@ -47,9 +43,50 @@
 			orderIds.set(newIds);
 			errorMsg.set(null);
 			isInitializing.set(false);
+
+			await Promise.all(newData.map((p) => fetchJobStatus(p.id)));
 		} catch (e) {
 			errorMsg.set((e as Error).message);
 			isInitializing.set(false);
+		}
+	}
+
+	async function fetchJobStatus(id: string) {
+		try {
+			const res = await fetch(`http://localhost:8080/jobs/${id}`);
+			if (!res.ok) throw new Error(`Failed to fetch job ${id}: ${res.status}`);
+
+			const json = await res.json();
+
+			// Adjust this based on your backend’s response structure
+			const state = json.data?.state ?? 'Unknown';
+
+			jobStatuses.update((prev) => {
+				const newMap = new Map(prev);
+				newMap.set(id, state);
+				return newMap;
+			});
+		} catch (e) {
+			jobStatuses.update((prev) => {
+				const newMap = new Map(prev);
+				newMap.set(id, 'Error');
+				return newMap;
+			});
+		}
+	}
+
+	async function restartPipeline(id: string) {
+		try {
+			const res = await fetch(`http://localhost:8080/pipelines/${id}/restart`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ force: true })
+			});
+			if (!res.ok) throw new Error(`Failed to restart pipeline: ${res.status}`);
+			await fetchJobStatus(id); // refresh the state for that pipeline
+		} catch (err) {
+			console.error('Restart failed:', err);
+			jobStatuses.update((prev) => new Map(prev).set(id, 'Error'));
 		}
 	}
 
@@ -140,42 +177,53 @@
 				<div class="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					{#each $sortedPipelines as pipeline (pipeline.id)}
 						<div
-							class="p-5 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:scale-[1.01] transform transition duration-200 ease-out cursor-pointer h-[88px]"
+							class="p-5 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:scale-[1.0025] transform transition duration-300 ease h-[88px]"
 						>
 							<div class="flex items-center justify-between mb-3">
-								<h2 class="text-sm font-semibold text-gray-900 truncate font-mono">
-									{pipeline.id}
-								</h2>
-								<span
-									class={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
-										pipeline.state === 'Running'
-											? 'text-green-600 bg-green-100 animate-pulse'
-											: pipeline.state === 'Failed'
-												? 'text-red-600 bg-red-100'
-												: 'text-gray-700 bg-gray-100'
-									}`}
-								>
+								<div class="flex flex-col">
+									<h2 class="text-sm font-semibold text-gray-900 truncate font-mono">
+										{pipeline.name}
+									</h2>
+									<p class="text-xs text-gray-500 mt-1">
+										id: {pipeline.id}
+									</p>
+								</div>
+
+								<div class="flex items-center gap-2">
+									<!-- Status pill -->
 									<span
-										class={`h-2 w-2 rounded-full ${
-											pipeline.state === 'Running'
-												? 'bg-green-500'
-												: pipeline.state === 'Failed'
-													? 'bg-red-500'
-													: 'bg-gray-400'
+										class={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
+											($jobStatuses.get(pipeline.id) ?? 'Unknown') === 'Running'
+												? 'text-green-600 bg-green-100 animate-pulse'
+												: ($jobStatuses.get(pipeline.id) ?? 'Unknown') === 'Failed'
+													? 'text-red-600 bg-red-100'
+													: 'text-gray-700 bg-gray-100'
 										}`}
-									></span>
-									{pipeline.state}
-								</span>
+									>
+										<span
+											class={`h-2 w-2 rounded-full ${
+												($jobStatuses.get(pipeline.id) ?? 'Unknown') === 'Running'
+													? 'bg-green-500'
+													: ($jobStatuses.get(pipeline.id) ?? 'Unknown') === 'Failed'
+														? 'bg-red-500'
+														: 'bg-gray-400'
+											}`}
+										></span>
+										{$jobStatuses.get(pipeline.id) ?? 'Unknown'}
+									</span>
+
+									<!-- Restart button -->
+									{#if ($jobStatuses.get(pipeline.id) ?? 'Unknown') !== 'Running'}
+										<button
+											on:click={() => restartPipeline(pipeline.id)}
+											class="p-1 rounded-md bg-gray-100 hover:bg-lime-100 text-lime-600 hover:text-lime-700 transition-colors cursor-pointer"
+											title="Restart pipeline"
+										>
+											<RefreshCw size={14} strokeWidth={2} />
+										</button>
+									{/if}
+								</div>
 							</div>
-							<p class="text-xs text-gray-500 mt-1">
-								Started: {pipeline.started_at
-									? new Date(pipeline.started_at).toLocaleDateString('en-GB', {
-											hour: '2-digit',
-											minute: '2-digit',
-											second: '2-digit'
-										})
-									: '—'}
-							</p>
 						</div>
 					{/each}
 				</div>
