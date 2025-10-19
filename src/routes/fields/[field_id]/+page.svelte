@@ -160,13 +160,13 @@
 		let type: string;
 		switch (sensorType) {
 			case SensorType.Temperature:
-				type = 'temp';
+				type = 'temperatures';
 				break;
 			case SensorType.Humidity:
-				type = 'hum';
+				type = 'humidities';
 				break;
 			case SensorType.PHLevel:
-				type = 'ph';
+				type = 'ph_levels';
 				break;
 			default:
 				type = 'unknown';
