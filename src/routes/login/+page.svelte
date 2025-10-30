@@ -34,54 +34,65 @@
 	}
 </script>
 
-<div class="flex max-w-4xl shadow-xl rounded-2xl overflow-hidden">
-	<!-- Left: form -->
-	<div class="w-full md:w-1/2 p-8 md:p-12 bg-white">
-		<h2 class="text-3xl font-bold text-gray-800 mb-6">Welcome to Nostradamus</h2>
-		<p class="text-gray-600 mb-8">
-			Login or create your account to start managing your IoT data streams.
-		</p>
+<div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50">
+	<div class="w-full max-w-5xl bg-white shadow-lg rounded-xl flex overflow-hidden">
+		<div class="w-full md:w-1/2 p-28">
+			<h2 class="text-5xl font-semibold text-lime-700 mb-6">Welcome</h2>
+			<p class="text-base text-gray-600 mb-10">Sign in or create an account</p>
 
-		<form on:submit|preventDefault={registerUser} class="space-y-6">
-			<div class="space-y-2">
-				<label for="email" class="text-sm font-medium text-gray-700">Email</label>
-				<Input id="email" type="email" bind:value={email} placeholder="you@example.com" />
-			</div>
+			<form on:submit|preventDefault={registerUser} class="space-y-7">
+				<div class="space-y-1">
+					<label for="email" class="text-sm font-medium text-gray-700">Email</label>
+					<Input
+						id="email"
+						type="email"
+						bind:value={email}
+						placeholder="you@example.com"
+						class="text-base"
+					/>
+				</div>
 
-			<div class="space-y-2">
-				<label for="password" class="text-sm font-medium text-gray-700">Password</label>
-				<Input id="password" type="password" bind:value={password} placeholder="••••••••" />
-			</div>
+				<div class="space-y-1">
+					<label for="password" class="text-sm font-medium text-gray-700">Password</label>
+					<Input
+						id="password"
+						type="password"
+						bind:value={password}
+						placeholder="••••••••"
+						class="text-base"
+					/>
+				</div>
 
-			<Button
-				type="submit"
-				class="w-full bg-lime-600 hover:bg-lime-700 text-white shadow-md cursor-pointer"
-				disabled={loading}
-			>
-				{#if loading}
-					Creating account…
-				{:else}
-					Login / Register
+				<Button
+					type="submit"
+					class="w-full bg-lime-600 hover:bg-lime-700 text-white text-base font-medium py-4 shadow cursor-pointer"
+					disabled={loading}
+				>
+					{#if loading}
+						Processing…
+					{:else}
+						Sign In / Register
+					{/if}
+				</Button>
+
+				{#if message}
+					<p class="text-sm text-lime-700 font-medium">{message}</p>
 				{/if}
-			</Button>
-			{#if message}
-				<p class="text-green-600">{message}</p>
-			{/if}
-			{#if error}
-				<p class="text-red-600 items-center justify-center flex">{error}</p>
-			{/if}
-		</form>
-	</div>
+				{#if error}
+					<p class="text-sm text-red-600">{error}</p>
+				{/if}
+			</form>
+		</div>
 
-	<!-- Right: accent panel -->
-	<div
-		class="hidden md:flex w-1/2 bg-gradient-to-br from-gray-300 to-lime-700 items-center justify-center"
-	>
-		<div class="text-center px-8 text-white">
-			<h3 class="text-2xl font-bold text-gray-900 mb-4">Real-time Agriculture</h3>
-			<p class="opacity-90">
-				Nostradamus provisions Kafka topics, MQTT mappings, and storage automatically for you.
-			</p>
+		<div
+			class="hidden md:flex w-1/2 bg-lime-50 border-l border-lime-200 items-center justify-center p-[32px]"
+		>
+			<div class="text-center max-w-sm">
+				<h3 class="text-3xl font-semibold text-lime-700 mb-3">Nostradamus</h3>
+				<p class="text-lg text-gray-600 leading-relaxed">
+					Automated data pipelines for your fields and sensors.
+				</p>
+			</div>
 		</div>
 	</div>
 </div>

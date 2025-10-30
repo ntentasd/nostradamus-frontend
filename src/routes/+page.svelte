@@ -1,16 +1,17 @@
 <script lang="ts">
+	import { API_URL } from '$lib/config';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import type { SensorData, Field } from '$lib/types';
 	import { Card, CardContent } from '$lib/components/ui/card';
-	import { goto } from '$app/navigation';
 	import { Button, type ButtonProps } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 
 	let latest = $state<SensorData[]>([]);
 	let fields = $state<Field[]>([]);
 	let loading = $state(false);
-	let fieldsLoading = true;
+	let fieldsLoading = $state(true);
+
 	let error = $state<string | null>(null);
 	let fieldsError = $state<string | null>(null);
 
@@ -44,7 +45,7 @@
 		validationError = null;
 
 		try {
-			const res = await fetch('http://localhost:8080/fields', {
+			const res = await fetch(`${API_URL}/fields`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -83,36 +84,32 @@
 		}
 	}
 
-	onMount(async () => {
-		try {
-			const res = await fetch('http://localhost:8080/latest');
-			if (!res.ok) throw new Error(`Status ${res.status}`);
+	// onMount(async () => {
+	// 	try {
+	// 		// fetch latest
+	// 		const latestRes = await fetch(`${API_URL}/latest`);
+	// 		if (!latestRes.ok) throw new Error(`Status ${latestRes.status}`);
+	// 		const latestRaw = await latestRes.json();
+	// 		if (Array.isArray(latestRaw.data)) latest = latestRaw.data;
 
-			const raw = await res.json();
-
-			if (raw && Array.isArray(raw.data)) {
-				latest = raw.data.map((s: SensorData) => ({
-					value: s.value,
-					timestamp: s.timestamp
-				}));
-			} else if (raw && raw.data === null) {
-				// explicitly handle no data
-				latest = [];
-			} else {
-				error = 'Unexpected response format';
-			}
-		} catch (err) {
-			error = (err as Error).message;
-		} finally {
-			loading = false;
-		}
-	});
+	// 		// fetch fields
+	// 		const fieldsRes = await fetch(
+	// 			`${API_URL}/fields?user_id=550e8400-e29b-41d4-a716-446655440000`
+	// 		);
+	// 		if (!fieldsRes.ok) throw new Error(`Status ${fieldsRes.status}`);
+	// 		const fieldsRaw = await fieldsRes.json();
+	// 		if (Array.isArray(fieldsRaw.data)) fields = fieldsRaw.data;
+	// 	} catch (err) {
+	// 		error = (err as Error).message;
+	// 	} finally {
+	// 		loading = false;
+	// 		fieldsLoading = false;
+	// 	}
+	// });
 
 	onMount(async () => {
 		try {
-			const res = await fetch(
-				'http://localhost:8080/fields?user_id=550e8400-e29b-41d4-a716-446655440000'
-			);
+			const res = await fetch(`${API_URL}/fields?user_id=550e8400-e29b-41d4-a716-446655440000`);
 			if (!res.ok) throw new Error(`Status ${res.status}`);
 			const raw = await res.json();
 
@@ -131,118 +128,77 @@
 		}
 	});
 
-	function openField(field_id: string) {
-		goto(`/fields/${field_id}`);
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			showModal = false;
+		}
 	}
 </script>
 
-<!-- Full height dashboard -->
-<div class="flex h-[calc(100vh-4rem)]">
-	<!-- Sidebar: edge aligned -->
-	<aside
-		class="w-64 bg-gradient-to-b from-emerald-50 to-emerald-100 border-r border-emerald-200 shadow-sm p-5 flex flex-col overflow-y-auto"
-	>
-		<h2 class="text-lg font-bold mb-6 text-emerald-700 text-center">Live Feed (Latest 5)</h2>
-
-		<div class="flex-1">
-			{#if loading}
-				<ul class="space-y-3 animate-pulse">
-					{#each Array(5) as _}
-						<li class="h-20 bg-gray-200 rounded-lg"></li>
-					{/each}
-				</ul>
-			{:else if error}
-				<Card class="shadow bg-red-50 border border-red-200">
-					<CardContent class="p-4 text-center">
-						<p class="text-red-600 font-semibold">Error: {error}</p>
-					</CardContent>
-				</Card>
-			{:else if latest.length === 0}
-				<p class="text-gray-500 text-center">No data</p>
-			{:else}
-				<ul class="space-y-3">
-					{#each latest.slice(0, 5) as item, i (i)}
-						<li in:fade={{ duration: 200 }} out:fade={{ duration: 150 }}>
-							<Card class="shadow-md hover:shadow-lg border border-gray-200 rounded-xl">
-								<CardContent class="px-5 flex flex-col items-center text-center space-y-2">
-									<p class="text-xs font-medium text-gray-500 uppercase tracking-wide">
-										{new Date(item.timestamp).toLocaleTimeString([], {
-											hour: '2-digit',
-											minute: '2-digit'
-										})}
-									</p>
-									<p class="text-2xl font-semibold text-emerald-600">
-										{item.value}
-										<span class="text-sm text-gray-500 ml-1">units</span>
-									</p>
-									<div class="w-8 h-px bg-emerald-100"></div>
-									<p class="text-xs text-gray-400">Latest reading</p>
-								</CardContent>
-							</Card>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
-	</aside>
-
-	<!-- Main content: now padded separately -->
-	<main class="flex-1 p-10 overflow-y-auto bg-white">
-		<div class="flex items-center justify-between mb-6">
-			<h2 class="text-2xl font-bold text-emerald-800">My Fields</h2>
+<div class="flex h-[calc(100vh-4rem)] bg-white justify-center">
+	<main class="w-full max-w-6xl p-6 overflow-y-auto bg-white">
+		<div class="flex items-center justify-between mb-4 border-b pb-3">
+			<h2 class="text-xl font-semibold text-lime-700">My Fields</h2>
 			<Button
 				onclick={openModal}
-				class="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+				class="bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 cursor-pointer"
 			>
 				Add Field
 			</Button>
 		</div>
 
-		<!-- Your fields grid goes here -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each fields as field}
-				<a href={`/fields/${field.field_id}`} class="block">
-					<Card class="shadow hover:shadow-lg transition-shadow border border-emerald-200">
-						<CardContent class="p-6 text-center">
-							<p class="text-lg font-semibold text-emerald-700">{field.field_name}</p>
-							<p class="text-sm text-gray-500">ID: {field.field_id}</p>
-						</CardContent>
-					</Card>
-				</a>
-			{/each}
-		</div>
+		{#if fieldsLoading}
+			<p class="text-gray-500 text-sm">Loading...</p>
+		{:else if fieldsError}
+			<p class="text-red-600 text-sm">{fieldsError}</p>
+		{:else if fields.length === 0}
+			<div class="text-gray-500 text-sm italic">No fields yet.</div>
+		{:else}
+			<div class="divide-y border border-gray-200 rounded-sm">
+				{#each fields as field}
+					<a href={`/fields/${field.field_id}`} class="block px-4 py-3 hover:bg-gray-50">
+						<div class="flex items-center justify-between">
+							<div class="font-medium text-lime-700">{field.field_name}</div>
+							<div class="text-xs text-gray-500">{field.field_id}</div>
+						</div>
+					</a>
+				{/each}
+			</div>
+		{/if}
 	</main>
 </div>
 
-<!-- Modal -->
+<svelte:window on:keydown={handleKeydown} />
+
 {#if showModal}
-	<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-		<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-			<h3 class="text-xl font-bold mb-4 text-emerald-700">Add a New Field</h3>
+	<div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+		<div class="bg-white border border-gray-200 w-full max-w-sm p-5">
+			<h3 class="text-lg font-semibold mb-3 text-lime-700">Add Field</h3>
 
-			<div class="space-y-2 mb-4">
-				<label for="fieldName" class="text-sm font-medium text-gray-700">Field Name</label>
-				<Input
-					id="fieldName"
-					type="text"
-					bind:value={newFieldName}
-					placeholder="Enter field name"
-				/>
-				{#if validationError}
-					<p class="text-red-600 text-sm">{validationError}</p>
-				{/if}
-			</div>
+			<label for="fieldName" class="block text-sm text-gray-700 mb-1">Field Name</label>
+			<Input
+				id="fieldName"
+				type="text"
+				bind:value={newFieldName}
+				placeholder="field name"
+				class="w-full mb-2"
+			/>
 
-			<div class="flex justify-end space-x-3">
+			{#if validationError}
+				<p class="text-xs text-red-600 mb-2">{validationError}</p>
+			{/if}
+
+			<div class="flex justify-end space-x-2 mt-2">
 				<Button
 					onclick={closeModal}
-					class="bg-gray-200 text-gray-800 hover:bg-gray-300 cursor-pointer"
+					class="bg-gray-200 text-gray-700 px-3 py-1 hover:bg-gray-300 cursor-pointer"
 				>
 					Cancel
 				</Button>
+
 				<Button
 					onclick={addField}
-					class="bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+					class="bg-lime-600 text-white px-3 py-1 hover:bg-lime-700 cursor-pointer"
 				>
 					Add
 				</Button>

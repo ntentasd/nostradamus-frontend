@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { API_URL } from '$lib/config';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 
@@ -16,7 +17,7 @@
 		const start = Date.now();
 
 		try {
-			const res = await fetch('http://localhost:8080/healthz');
+			const res = await fetch(`${API_URL}/healthz`);
 			status = res.ok ? 'Healthy' : 'Unhealthy';
 		} catch {
 			status = 'Unhealthy';
@@ -28,26 +29,21 @@
 	});
 </script>
 
-<div
-	class={`w-1/4 h-50 flex-col items-center justify-center outline-1 p-10 rounded-2xl shadow-md ${healthClass}`}
->
-	<h2 class="text-2xl w-full justify-center items-center text-center font-semibold mb-4">
-		System Health
-	</h2>
+<div class="min-h-[calc(100vh-4rem)] bg-gray-50 flex justify-center pt-[120px]">
+	<div class="inline-block w-full max-w-2xl">
+		<div class={`max-w-lg w-full p-16 rounded-xl shadow border ${healthClass}`}>
+			<h2 class="text-2xl text-center font-semibold mb-4">System Health</h2>
 
-	<div class="flex w-full justify-center text-center items-center space-x-2">
-		{#if loading}
-			<div
-				class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex items-center justify-center"
-				in:fade={{ duration: 150 }}
-			></div>
-		{:else if status}
-			<!-- reserve spinner space so text doesn’t shift -->
-			<div class="w-full flex items-center justify-center">
-				<p class="text-lg leading-none min-h-[1.5rem]" in:fade={{ duration: 200 }}>
-					{status}
-				</p>
+			<div class="flex justify-center items-center">
+				{#if loading}
+					<div
+						class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+						in:fade={{ duration: 150 }}
+					></div>
+				{:else if status}
+					<p class="text-lg font-medium" in:fade={{ duration: 200 }}>{status}</p>
+				{/if}
 			</div>
-		{/if}
+		</div>
 	</div>
 </div>
