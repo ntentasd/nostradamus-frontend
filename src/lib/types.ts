@@ -18,6 +18,15 @@ export interface Sensor {
 	sensor_id: string;
 	sensor_name: string;
 	sensor_type: SensorType;
+	aggregate?: Aggregate | null;
+}
+
+export interface Aggregate {
+	avg: number;
+	min: number;
+	max: number;
+	count: number;
+	timestamp: string;
 }
 
 export interface Pipeline {

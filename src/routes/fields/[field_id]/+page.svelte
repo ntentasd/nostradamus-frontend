@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { API_URL } from '$lib/config';
-	import { Card, CardContent } from '$lib/components/ui/card';
 	import type { Field, Sensor } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { SensorType } from '$lib/types';
@@ -49,6 +48,19 @@
 		}
 	}
 
+	async function fetchAggregate(sensor_id: string, sensor_type: number): Promise<any | null> {
+		try {
+			const res = await fetch(
+				`${API_URL}/aggregate?sensor_id=${sensor_id}&sensor_type=${sensor_type}&window=1h`
+			);
+			if (!res.ok) return null;
+			const data = await res.json();
+			return data.data || null;
+		} catch {
+			return null;
+		}
+	}
+
 	async function loadFieldAndSensors() {
 		try {
 			// Fetch field name first
@@ -69,13 +81,29 @@
 			const sensorRes = await fetch(`${API_URL}/sensors?field_id=${params.field_id}`);
 			if (!sensorRes.ok) throw new Error(`Failed to fetch sensors: ${sensorRes.status}`);
 			const sensorRaw = await sensorRes.json();
+			let baseSensors: Sensor[] = [];
+
 			if (Array.isArray(sensorRaw.data)) {
-				sensors = sensorRaw.data;
+				baseSensors = sensorRaw.data;
 			} else if (Array.isArray(sensorRaw.data?.sensors)) {
-				sensors = sensorRaw.data.sensors;
+				baseSensors = sensorRaw.data.sensors;
 			} else {
-				sensors = [];
+				baseSensors = [];
 			}
+
+			const enriched: Sensor[] = [];
+
+			for (const s of baseSensors) {
+				try {
+					const agg = await fetchAggregate(s.sensor_id, s.sensor_type);
+					enriched.push({ ...s, aggregate: agg });
+				} catch (err) {
+					console.warn(`Aggregate fetch failed for ${s.sensor_name}:`, err);
+					enriched.push({ ...s, aggregate: null });
+				}
+			}
+
+			sensors = enriched;
 		} catch (err) {
 			error = (err as Error).message;
 		} finally {
@@ -114,6 +142,19 @@
 		a.click();
 		a.remove();
 		URL.revokeObjectURL(url);
+	}
+
+	function unitForSensor(sensorType: number): string {
+		switch (sensorType) {
+			case SensorType.Temperature:
+				return '°C';
+			case SensorType.Humidity:
+				return '%';
+			case SensorType.PHLevel:
+				return 'pH';
+			default:
+				return '';
+		}
 	}
 
 	function openModal() {
@@ -229,6 +270,17 @@
 						<div class="font-medium text-lime-700">{s.sensor_name}</div>
 						<div class="text-xs text-gray-500 font-mono">{s.sensor_id}</div>
 					</div>
+					{#if s.aggregate}
+						<div class="mt-1 text-xs text-gray-600">
+							Avg: <span class="font-semibold">{s.aggregate.avg.toFixed(1)}</span>
+							{unitForSensor(s.sensor_type)} · Min: {s.aggregate.min.toFixed(1)}
+							{unitForSensor(s.sensor_type)} · Max: {s.aggregate.max.toFixed(1)}
+							{unitForSensor(s.sensor_type)}
+						</div>
+					{:else}
+						<div class="mt-1 text-xs text-gray-400 italic">No recent data</div>
+					{/if}
+
 					<Button
 						type="button"
 						class="bg-lime-600 hover:bg-lime-700 text-white text-xs px-3 py-1 cursor-pointer"
