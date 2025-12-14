@@ -118,8 +118,10 @@
 					field_id: f.field_id,
 					field_name: f.field_name
 				}));
+				fieldsError = null;
 			} else {
-				fieldsError = 'Unexpected response format';
+				fields = [];
+				fieldsError = null;
 			}
 		} catch (err) {
 			fieldsError = (err as Error).message;
